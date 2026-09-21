@@ -1,0 +1,28 @@
+replicaCount: 2
+
+image:
+  repository: 520819077072.dkr.ecr.ap-south-1.amazonaws.com/animeworld
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: alb
+
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: YOUR_ACM_CERTIFICATE_ARN
+
+  hosts:
+    - host: anime.anildevops.space
+      paths:
+        - path: /
+          pathType: Prefix
