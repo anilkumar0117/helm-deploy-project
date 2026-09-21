@@ -22,7 +22,7 @@ ingress:
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:520819077072:certificate/7f145ef0-e4a0-4bdd-9ca5-8242687b4ac1
 
   hosts:
-    - host: anime.anildevops.space
+    - host: helmanime.anildevops.space
       paths:
         - path: /
           pathType: Prefix
