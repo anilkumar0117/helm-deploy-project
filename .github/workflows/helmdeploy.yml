@@ -1,0 +1,88 @@
+name: Animeworld CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: anil-docker
+  EKS_CLUSTER_NAME: my-project
+  K8S_NAMESPACE: anime-helm
+  HELM_RELEASE: animeworld
+
+jobs:
+
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # 1. Checkout source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configure AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. Login to ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Set image variables
+      - name: Set image
+        id: image
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG=${GITHUB_SHA}
+
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      # 5. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t $IMAGE_URI:$IMAGE_TAG \
+            ./app
+
+      # 6. Push Docker image to ECR
+      - name: Push Docker image
+        run: |
+          docker push $IMAGE_URI:$IMAGE_TAG
+
+      # 7. Configure kubectl for EKS
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER_NAME
+
+      # 8. Install Helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      # 9. Deploy using Helm
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install $HELM_RELEASE ./animeworld \
+            --namespace $K8S_NAMESPACE \
+            --create-namespace \
+            --set image.repository=$IMAGE_URI \
+            --set image.tag=$IMAGE_TAG \
+            --wait
+
+      # 10. Check deployment
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n $K8S_NAMESPACE
+          kubectl get svc -n $K8S_NAMESPACE
+          kubectl get ingress -n $K8S_NAMESPACE
