@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ include "animeworld.fullname" . }}
+  labels:
+    {{- include "animeworld.labels" . | nindent 4 }}
+
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  selector:
+    matchLabels:
+      {{- include "animeworld.selectorLabels" . | nindent 6 }}
+
+  template:
+    metadata:
+      labels:
+        {{- include "animeworld.selectorLabels" . | nindent 8 }}
+
+    spec:
+      containers:
+        - name: animeworld
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
